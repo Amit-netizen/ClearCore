@@ -1,0 +1,18 @@
+spring:
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+  jpa:
+    show-sql: false
+  kafka:
+    producer:
+      retries: 0
+    consumer:
+      auto-offset-reset: earliest
+
+logging:
+  level:
+    com.payments: INFO
+    org.springframework.batch: WARN

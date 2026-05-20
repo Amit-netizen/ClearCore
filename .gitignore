@@ -1,0 +1,7 @@
+target/
+.vscode/
+*.class
+*.jar
+*.war
+*.exec
+.DS_Store

@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: payment-processing-system
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payments
+    username: payments
+    password: payments
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 3
+      acks: all
+    consumer:
+      group-id: payment-consumer-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.payments.kafka"
+
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+# App-specific config
+payments:
+  fraud:
+    velocity-limit-per-minute: 5
+    single-txn-amount-threshold: 100000  # ₹1L in paise
+  rate-limit:
+    requests-per-minute: 100
+    burst-size: 20
+  settlement:
+    cron: "0 0 * * * *"  # every hour
+    batch-size: 100
+
+logging:
+  level:
+    com.payments: DEBUG
+    org.springframework.batch: INFO
