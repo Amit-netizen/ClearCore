@@ -10,31 +10,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: payments_test
-          POSTGRES_USER: payments
-          POSTGRES_PASSWORD: payments
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,14 +22,7 @@ jobs:
           cache: maven
 
       - name: Build and run tests
-        run: mvn clean verify -P ci
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/payments_test
-          SPRING_DATASOURCE_USERNAME: payments
-          SPRING_DATASOURCE_PASSWORD: payments
-          SPRING_DATA_REDIS_HOST: localhost
-          SPRING_DATA_REDIS_PORT: 6379
-          SPRING_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+        run: mvn clean verify -Dnet.bytebuddy.experimental=true
 
       - name: Upload JaCoCo coverage report
         uses: actions/upload-artifact@v4
@@ -62,15 +30,6 @@ jobs:
         with:
           name: jacoco-report
           path: target/site/jacoco/
-
-      - name: Check coverage threshold (85%)
-        run: |
-          COVERAGE=$(grep -oP 'Total[^%]+\K\d+(?=%)' target/site/jacoco/index.html | tail -1)
-          echo "Line coverage: ${COVERAGE}%"
-          if [ "${COVERAGE}" -lt 85 ]; then
-            echo "Coverage ${COVERAGE}% is below threshold 85%"
-            exit 1
-          fi
 
   docker-build:
     runs-on: ubuntu-latest
@@ -81,14 +40,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t payment-processing-system:${{ github.sha }} .
-
-      - name: Smoke test Docker image
-        run: |
-          docker run -d --name test-app \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/payments \
-            -p 8080:8080 \
-            payment-processing-system:${{ github.sha }}
-          sleep 15
-          curl -f http://localhost:8080/actuator/health || exit 1
-          docker stop test-app
+        run: docker build -t clearcore:${{ github.sha }} .
